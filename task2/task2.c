@@ -36,7 +36,7 @@ void stop(cmdLine* pCmdLine);
 int debug_mode = 0;
 int main(int argc, char** argv){
     char currentPath[PATH_MAX];
-    process** proc_list = malloc(sizeof(process));
+    process** proc_list = (process **)malloc(sizeof(process));
     if(argc > 1) {
         if(strcmp(argv[1],"-d") == 0)
             debug_mode = 1;
@@ -53,8 +53,8 @@ int main(int argc, char** argv){
         char* command = cmdInput->arguments[0];
         if(strcmp(command,"quit") == 0){
             freeProcessList(*proc_list);
-            free(proc_list);
             freeCmdLines(cmdInput);
+            free(proc_list);
             return 0;
         }
         else if(strcmp(command,"cd") == 0){
@@ -62,15 +62,19 @@ int main(int argc, char** argv){
             if(result  < 0){
                 fprintf(stderr,"cd failed, error number : %d \n",result);
             }
+            freeCmdLines(cmdInput);
         }
         else if(strcmp(command,"showprocs") == 0){
             printProcessList(proc_list);
+            freeCmdLines(cmdInput);
         }
         else if(strcmp(command,"nap") == 0){
             nap(cmdInput);
+            freeCmdLines(cmdInput);
         }
         else if(strcmp(command,"stop") == 0 ){
             stop(cmdInput);
+            freeCmdLines(cmdInput);
         }
         else
             execute(cmdInput,proc_list);
@@ -112,14 +116,14 @@ void execute(cmdLine *pCmdLine,process** proc_list){
 void addProcess(process** process_list, cmdLine* cmd, pid_t pid){
     process* cur_proc = *process_list;
     if(cur_proc == NULL){
-        *process_list = malloc(sizeof(process));
+        *process_list = (process *)malloc(sizeof(process));
         cur_proc = *process_list;
     }
     else{
         while(cur_proc->next != NULL){
             cur_proc = cur_proc->next;
         }
-        cur_proc->next = malloc(sizeof(process));
+        cur_proc->next = (process *)malloc(sizeof(process));
         cur_proc = cur_proc->next;
     }
     cur_proc->cmd = cmd;
@@ -156,13 +160,13 @@ void printProcessList(process** process_list){
 }
 
 void freeProcessList(process* process_list){
-    process* temp;
-    process* next_process = process_list;
-    while(next_process != NULL){
-        temp = next_process->next;
-        free(next_process->cmd);
-        free(next_process);
-        next_process = temp;
+    process* next;
+    process* curr_process = process_list;
+    while(curr_process != NULL){
+        next = curr_process->next;
+        freeCmdLines(curr_process->cmd);
+        free(curr_process);
+        curr_process = next;
     }
 }
 
@@ -200,11 +204,13 @@ void clearTerminatedProcesses(process** process_list){
             if(prev != NULL){
                 prev->next = cur_proc->next;
                 temp = cur_proc->next;
+                freeCmdLines(cur_proc->cmd);
                 free(cur_proc);
                 cur_proc = temp;
             }
             else{
                 *process_list = cur_proc->next;
+                freeCmdLines(cur_proc->cmd);
                 free(cur_proc);
                 cur_proc = *process_list;
             }
